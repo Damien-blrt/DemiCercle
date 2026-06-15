@@ -1,5 +1,5 @@
 // =============================================================================
-// app.js — Logique principale du Jeu du Demi-Cercle
+// app.js — Logique principale du Jeu du Demi-Cercle (Version Déduction)
 // Architecture: État global + Firebase sync + Interactions SVG
 // =============================================================================
 
@@ -10,7 +10,7 @@ const state = {
     playerName: null,
     currentScreen: 'screen-home',
     selectedValue: null, // Valeur sélectionnée sur le demi-cercle (0-100)
-    selectedTheme: null, // Thème sélectionné {text, category}
+    selectedTheme: null, // Thème sélectionné {left, right, category}
     selectedCategory: 'Toutes',
     listeners: [],       // Firebase listeners à nettoyer
 };
@@ -33,18 +33,13 @@ document.addEventListener('DOMContentLoaded', () => {
 // GESTION DES ÉCRANS
 // =============================================================================
 
-/**
- * Affiche un écran et masque les autres
- * @param {string} screenId - L'ID de l'écran à afficher
- */
 function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     const screen = document.getElementById(screenId);
     if (screen) {
         screen.classList.add('active');
-        // Re-déclencher l'animation d'entrée
         screen.style.animation = 'none';
-        screen.offsetHeight; // Force reflow
+        screen.offsetHeight;
         screen.style.animation = '';
         state.currentScreen = screenId;
     }
@@ -57,9 +52,6 @@ function showJoinScreen() { showScreen('screen-join'); }
 // GESTION DES SALLES
 // =============================================================================
 
-/**
- * Crée une nouvelle salle de jeu
- */
 async function createRoom() {
     const name = document.getElementById('create-name').value.trim();
     if (!name) {
@@ -72,7 +64,6 @@ async function createRoom() {
     btn.textContent = 'Création...';
 
     try {
-        // Générer un code unique
         let roomCode;
         let exists = true;
         while (exists) {
@@ -81,7 +72,6 @@ async function createRoom() {
             exists = snap.exists();
         }
 
-        // Créer la salle dans Firebase
         const roomData = {
             status: 'waiting',
             players: {
@@ -97,29 +87,26 @@ async function createRoom() {
             respondent: 'playerA',
             guesser: 'playerB',
             theme: null,
-            respondentPosition: null,
-            guesserPosition: null,
+            targetValue: null,
+            hintWord: null,
+            guessValue: null,
             history: [],
             createdAt: firebase.database.ServerValue.TIMESTAMP
         };
 
         await getRoomRef(roomCode).set(roomData);
 
-        // Sauvegarder la session
         state.roomCode = roomCode;
         state.playerRole = 'playerA';
         state.playerName = name;
         saveSession();
 
-        // Configurer la présence
         setupPresence(roomCode, 'playerA');
 
-        // Afficher la salle d'attente
         document.getElementById('waiting-room-code').textContent = roomCode;
         document.getElementById('waiting-player-a').textContent = name;
         showScreen('screen-waiting');
 
-        // Écouter les changements dans la salle
         listenToRoom(roomCode);
 
         showToast('Salle créée !', 'success');
@@ -132,9 +119,6 @@ async function createRoom() {
     btn.textContent = 'Créer la salle';
 }
 
-/**
- * Rejoindre une salle existante
- */
 async function joinRoom() {
     const name = document.getElementById('join-name').value.trim();
     const code = document.getElementById('join-code').value.trim().toUpperCase();
@@ -169,7 +153,6 @@ async function joinRoom() {
             return;
         }
 
-        // Ajouter le joueur B
         await getPlayerRef(code, 'playerB').set({
             name: name,
             score: 0,
@@ -177,23 +160,19 @@ async function joinRoom() {
             lastSeen: firebase.database.ServerValue.TIMESTAMP
         });
 
-        // Sauvegarder la session
         state.roomCode = code;
         state.playerRole = 'playerB';
         state.playerName = name;
         saveSession();
 
-        // Configurer la présence
         setupPresence(code, 'playerB');
 
-        // Afficher la salle d'attente
         document.getElementById('waiting-room-code').textContent = code;
         document.getElementById('waiting-player-a').textContent = room.players.playerA.name;
         document.getElementById('waiting-player-b').textContent = name;
         document.getElementById('waiting-player-b-status').innerHTML = '<span class="dot online"></span>Connecté';
         showScreen('screen-waiting');
 
-        // Écouter les changements
         listenToRoom(code);
 
         showToast(`Tu as rejoint la salle de ${room.players.playerA.name} !`, 'success');
@@ -206,26 +185,18 @@ async function joinRoom() {
     btn.textContent = 'Rejoindre';
 }
 
-/**
- * Quitter la salle actuelle
- */
 async function leaveRoom() {
     if (!state.roomCode) return;
-
     try {
-        // Supprimer le joueur de la salle
         if (state.playerRole === 'playerA') {
-            // Le créateur quitte → supprimer toute la salle
             await getRoomRef(state.roomCode).remove();
         } else {
-            // Le joueur B quitte → retirer son entrée
             await getPlayerRef(state.roomCode, 'playerB').remove();
             await getRoomRef(state.roomCode).update({ status: 'waiting' });
         }
     } catch (e) {
         console.error('Erreur quitter salle:', e);
     }
-
     cleanupListeners();
     clearSession();
     showScreen('screen-home');
@@ -236,42 +207,26 @@ async function leaveRoom() {
 // FIREBASE LISTENERS
 // =============================================================================
 
-/**
- * Écoute les changements en temps réel dans la salle
- * @param {string} roomCode
- */
 function listenToRoom(roomCode) {
     cleanupListeners();
-
     const roomRef = getRoomRef(roomCode);
-
-    // Listener principal
     const mainListener = roomRef.on('value', (snap) => {
         if (!snap.exists()) {
-            // La salle a été supprimée
             showToast('La salle a été fermée', 'warning');
             cleanupListeners();
             clearSession();
             showScreen('screen-home');
             return;
         }
-
-        const room = snap.val();
-        handleRoomUpdate(room);
+        handleRoomUpdate(snap.val());
     });
-
     state.listeners.push({ ref: roomRef, event: 'value', callback: mainListener });
 }
 
-/**
- * Gère les mises à jour de la salle
- * @param {Object} room - Données de la salle
- */
 function handleRoomUpdate(room) {
     const isPlayerA = state.playerRole === 'playerA';
     const isRespondent = room.respondent === state.playerRole;
 
-    // Mettre à jour l'affichage des joueurs dans la salle d'attente
     if (room.players?.playerA) {
         document.getElementById('waiting-player-a').textContent = room.players.playerA.name;
     }
@@ -283,80 +238,73 @@ function handleRoomUpdate(room) {
                 ? '<span class="dot online"></span>Connecté'
                 : '<span class="dot offline"></span>Déconnecté';
 
-        // Montrer le bouton "Lancer" si on est playerA
         if (isPlayerA && room.status === 'waiting') {
             document.getElementById('waiting-anim').classList.add('hidden');
             document.getElementById('btn-start-game').classList.remove('hidden');
         }
     }
 
-    // Mettre à jour les scores sur tous les écrans
     updateAllScoreHeaders(room);
 
-    // Machine d'état du jeu
+    // Fonction d'aide pour mettre à jour l'affichage des pôles
+    const updateThemePoles = (prefix) => {
+        if (room.theme) {
+            document.getElementById(`${prefix}-theme-left`).textContent = room.theme.left;
+            document.getElementById(`${prefix}-theme-right`).textContent = room.theme.right;
+            document.getElementById(`${prefix}-theme-cat`).textContent = room.theme.category;
+        }
+    };
+
     switch (room.status) {
         case 'waiting':
-            // On reste sur l'écran d'attente
-            if (state.currentScreen !== 'screen-waiting' && 
-                state.currentScreen !== 'screen-home' && 
-                state.currentScreen !== 'screen-create' &&
-                state.currentScreen !== 'screen-join') {
+            if (!['screen-waiting', 'screen-home', 'screen-create', 'screen-join'].includes(state.currentScreen)) {
                 showScreen('screen-waiting');
             }
             break;
 
         case 'choosing_theme':
             if (isRespondent) {
-                // Le répondant choisit le thème
                 state.selectedTheme = null;
                 renderThemeList();
                 showScreen('screen-theme');
             } else {
-                // Le devin attend
                 showScreen('screen-theme-wait');
             }
             break;
 
         case 'placing':
             if (isRespondent) {
-                // Le répondant place son curseur
-                if (room.theme) {
-                    document.getElementById('place-theme-text').textContent = room.theme.text;
-                    document.getElementById('place-theme-cat').textContent = room.theme.category;
-                }
-                state.selectedValue = null;
-                resetMarker('place');
+                updateThemePoles('place');
+                document.getElementById('place-hint-input').value = '';
+                document.getElementById('btn-confirm-place').disabled = true;
+                
+                // Afficher la target value sur le SVG
+                updateMarker('place', room.targetValue);
+                updateValueDisplay('place', room.targetValue);
+                
                 showScreen('screen-place');
-                setupSemicircleInteraction('place');
+                // Attention: Pas d'interaction SVG pour le répondant !
             } else {
-                // Le devin attend que le répondant place
-                if (room.theme) {
-                    document.getElementById('wo-theme-text').textContent = room.theme.text;
-                    document.getElementById('wo-theme-cat').textContent = room.theme.category;
-                }
-                document.getElementById('wo-waiting-text').textContent = 'Le Répondant place son curseur...';
+                updateThemePoles('wo');
+                document.getElementById('wo-waiting-text').textContent = 'Le Répondant réfléchit...';
+                document.getElementById('wo-waiting-subtext').textContent = "Il doit trouver un indice d'un seul mot pour te faire deviner la cible secrète.";
                 showScreen('screen-wait-other');
             }
             break;
 
         case 'guessing':
             if (!isRespondent) {
-                // Le devin devine
-                if (room.theme) {
-                    document.getElementById('guess-theme-text').textContent = room.theme.text;
-                    document.getElementById('guess-theme-cat').textContent = room.theme.category;
-                }
+                updateThemePoles('guess');
+                document.getElementById('guess-hint-word').textContent = room.hintWord;
+                
                 state.selectedValue = null;
                 resetMarker('guess');
                 showScreen('screen-guess');
-                setupSemicircleInteraction('guess');
+                setupSemicircleInteraction('guess'); // Interaction activée pour le Devin
             } else {
-                // Le répondant attend
-                if (room.theme) {
-                    document.getElementById('wo-theme-text').textContent = room.theme.text;
-                    document.getElementById('wo-theme-cat').textContent = room.theme.category;
-                }
+                updateThemePoles('wo');
                 document.getElementById('wo-waiting-text').textContent = 'Le Devin réfléchit...';
+                document.getElementById('wo-waiting-subtext').textContent = "Il essaie de placer son curseur grâce à ton indice !";
                 showScreen('screen-wait-other');
             }
             break;
@@ -372,7 +320,7 @@ function handleRoomUpdate(room) {
 }
 
 // =============================================================================
-// SCORES HEADERS — Mise à jour sur tous les écrans
+// SCORES HEADERS
 // =============================================================================
 
 function updateAllScoreHeaders(room) {
@@ -382,7 +330,6 @@ function updateAllScoreHeaders(room) {
     const scoreB = room.players?.playerB?.score || 0;
     const roundText = `${room.currentRound || 1}/${room.totalRounds || 10}`;
 
-    // Tous les préfixes d'écrans avec score header
     const prefixes = ['theme', 'tw', 'place', 'guess', 'wo', 'reveal'];
 
     prefixes.forEach(prefix => {
@@ -404,84 +351,70 @@ function updateAllScoreHeaders(room) {
 // SÉLECTION DE THÈME
 // =============================================================================
 
-/**
- * Initialise les filtres de catégorie
- */
 function initCategoryFilters() {
     const container = document.getElementById('category-filters');
     if (!container) return;
-
     container.innerHTML = CATEGORIES.map(cat => 
         `<button class="category-chip${cat === 'Toutes' ? ' active' : ''}" 
                  onclick="filterCategory('${cat}')">${cat}</button>`
     ).join('');
 }
 
-/**
- * Filtre les thèmes par catégorie
- * @param {string} category
- */
 function filterCategory(category) {
     state.selectedCategory = category;
-
-    // Mettre à jour l'UI des chips
     document.querySelectorAll('.category-chip').forEach(chip => {
         chip.classList.toggle('active', chip.textContent === category);
     });
-
     renderThemeList();
 }
 
-/**
- * Affiche la liste des thèmes filtrés
- */
 function renderThemeList() {
     const container = document.getElementById('theme-list');
     const themes = getThemesByCategory(state.selectedCategory);
 
     container.innerHTML = themes.map((theme, i) =>
         `<div class="theme-option" data-index="${i}" onclick="selectThemeOption(this, ${JSON.stringify(theme).replace(/"/g, '&quot;')})">
-            ${theme.text}
+            <div class="theme-option-left">${theme.left}</div>
+            <div class="theme-option-sep">↔</div>
+            <div class="theme-option-right">${theme.right}</div>
         </div>`
     ).join('');
 }
 
-/**
- * Sélectionne un thème de la liste
- */
 function selectThemeOption(el, theme) {
     document.querySelectorAll('.theme-option').forEach(o => o.classList.remove('selected'));
     el.classList.add('selected');
     state.selectedTheme = theme;
-    document.getElementById('custom-theme').value = '';
+    document.getElementById('custom-theme-left').value = '';
+    document.getElementById('custom-theme-right').value = '';
     document.getElementById('btn-confirm-theme').disabled = false;
 }
 
-/**
- * Sélectionne un thème aléatoire
- */
 function selectRandomThemeUI() {
     const theme = getRandomTheme(state.selectedCategory);
     state.selectedTheme = theme;
 
-    // Mettre en surbrillance le thème dans la liste
     document.querySelectorAll('.theme-option').forEach(o => {
-        o.classList.toggle('selected', o.textContent.trim() === theme.text);
+        const leftEl = o.querySelector('.theme-option-left');
+        o.classList.toggle('selected', leftEl && leftEl.textContent.trim() === theme.left);
     });
 
-    document.getElementById('custom-theme').value = '';
+    document.getElementById('custom-theme-left').value = '';
+    document.getElementById('custom-theme-right').value = '';
     document.getElementById('btn-confirm-theme').disabled = false;
-    showToast(`Thème: "${theme.text.substring(0, 40)}..."`, 'info');
+    showToast(`Thème: ${theme.left} ↔ ${theme.right}`, 'info');
 }
 
-/**
- * Confirme le thème choisi et l'envoie à Firebase
- */
 async function confirmTheme() {
-    // Vérifier si c'est un thème personnalisé
-    const customText = document.getElementById('custom-theme').value.trim();
-    if (customText) {
-        state.selectedTheme = { text: customText, category: 'Personnalisé' };
+    const leftText = document.getElementById('custom-theme-left').value.trim();
+    const rightText = document.getElementById('custom-theme-right').value.trim();
+    
+    if (leftText || rightText) {
+        if (!leftText || !rightText) {
+            showToast('Remplis les deux pôles pour un thème personnalisé !', 'warning');
+            return;
+        }
+        state.selectedTheme = { left: leftText, right: rightText, category: 'Personnalisé' };
     }
 
     if (!state.selectedTheme) {
@@ -490,11 +423,15 @@ async function confirmTheme() {
     }
 
     try {
+        // Générer la valeur cible secrète entre 0 et 100
+        const randomTarget = Math.floor(Math.random() * 101);
+
         await getRoomRef(state.roomCode).update({
             theme: state.selectedTheme,
+            targetValue: randomTarget,
+            hintWord: null,
+            guessValue: null,
             status: 'placing',
-            respondentPosition: null,
-            guesserPosition: null,
         });
     } catch (error) {
         console.error('Erreur confirmation thème:', error);
@@ -506,15 +443,12 @@ async function confirmTheme() {
 // DEMI-CERCLE INTERACTIF
 // =============================================================================
 
-/**
- * Configure l'interaction avec le demi-cercle
- * @param {string} mode - "place" ou "guess"
- */
 function setupSemicircleInteraction(mode) {
     const svg = document.getElementById(`${mode}-svg`);
     if (!svg) return;
 
-    // Supprimer les anciens listeners
+    svg.classList.add('interactive');
+
     const newSvg = svg.cloneNode(true);
     svg.parentNode.replaceChild(newSvg, svg);
 
@@ -526,35 +460,25 @@ function setupSemicircleInteraction(mode) {
             updateMarker(mode, value);
             updateValueDisplay(mode, value);
 
-            // Activer le bouton de confirmation
             const btnId = mode === 'place' ? 'btn-confirm-place' : 'btn-confirm-guess';
-            document.getElementById(btnId).disabled = false;
+            const btn = document.getElementById(btnId);
+            if (btn) btn.disabled = false;
         }
     };
 
-    // Mouse events
     newSvg.addEventListener('click', handleInteraction);
     newSvg.addEventListener('mousemove', (e) => {
         if (e.buttons === 1) handleInteraction(e);
     });
-
-    // Touch events
     newSvg.addEventListener('touchstart', handleInteraction, { passive: false });
     newSvg.addEventListener('touchmove', handleInteraction, { passive: false });
 }
 
-/**
- * Convertit un événement souris/touch en valeur 0-100 sur le demi-cercle
- * @param {SVGElement} svg
- * @param {Event} event
- * @returns {number|null} Valeur entre 0 et 100
- */
 function getValueFromEvent(svg, event) {
     const rect = svg.getBoundingClientRect();
     const svgWidth = 400;
     const svgHeight = 230;
 
-    // Position du clic relative au SVG
     let clientX, clientY;
     if (event.touches) {
         clientX = event.touches[0].clientX;
@@ -564,34 +488,22 @@ function getValueFromEvent(svg, event) {
         clientY = event.clientY;
     }
 
-    // Convertir en coordonnées SVG
     const x = ((clientX - rect.left) / rect.width) * svgWidth;
     const y = ((clientY - rect.top) / rect.height) * svgHeight;
 
-    // Calculer l'angle par rapport au centre du demi-cercle
     const dx = x - ARC.centerX;
-    const dy = ARC.centerY - y; // Y inversé en SVG
+    const dy = ARC.centerY - y; 
 
-    // Angle en radians (0 = droite, PI = gauche)
     let angle = Math.atan2(dy, dx);
 
-    // Limiter au demi-cercle (0° à 180°)
-    if (angle < 0) return null; // En dessous du diamètre
+    if (angle < 0) return null; 
     if (angle > Math.PI) angle = Math.PI;
 
-    // Convertir: gauche (PI) = 0, droite (0) = 100
     const value = Math.round(((Math.PI - angle) / Math.PI) * 100);
-
     return Math.max(0, Math.min(100, value));
 }
 
-/**
- * Calcule la position (x, y) sur l'arc pour une valeur donnée
- * @param {number} value - Valeur de 0 à 100
- * @returns {{x: number, y: number}}
- */
 function getPositionOnArc(value) {
-    // value 0 = gauche (180°), value 100 = droite (0°)
     const angleRad = Math.PI - (value / 100) * Math.PI;
     return {
         x: ARC.centerX + ARC.radius * Math.cos(angleRad),
@@ -599,11 +511,6 @@ function getPositionOnArc(value) {
     };
 }
 
-/**
- * Met à jour le marqueur visuel sur le demi-cercle
- * @param {string} mode - "place" ou "guess"
- * @param {number} value - Valeur 0-100
- */
 function updateMarker(mode, value) {
     const marker = document.getElementById(`${mode}-marker`);
     if (!marker) return;
@@ -611,71 +518,67 @@ function updateMarker(mode, value) {
     const pos = getPositionOnArc(value);
     marker.style.display = 'block';
 
-    // Mettre à jour le cercle
     const dot = marker.querySelector('.marker-dot');
     dot.setAttribute('cx', pos.x);
     dot.setAttribute('cy', pos.y);
 
-    // Mettre à jour la ligne pointillée vers le centre
     const line = marker.querySelector('.marker-line');
     line.setAttribute('x1', ARC.centerX);
     line.setAttribute('y1', ARC.centerY);
     line.setAttribute('x2', pos.x);
     line.setAttribute('y2', pos.y);
 
-    // Mettre à jour le label
     const label = marker.querySelector('text');
     label.setAttribute('x', pos.x);
     label.setAttribute('y', pos.y);
     label.textContent = value;
 }
 
-/**
- * Réinitialise le marqueur
- */
 function resetMarker(mode) {
     const marker = document.getElementById(`${mode}-marker`);
     if (marker) marker.style.display = 'none';
     document.getElementById(`${mode}-value`).textContent = '—';
 }
 
-/**
- * Met à jour l'affichage de la valeur numérique
- */
 function updateValueDisplay(mode, value) {
-    document.getElementById(`${mode}-value`).textContent = value;
+    const el = document.getElementById(`${mode}-value`);
+    if(el) el.textContent = value;
 }
 
 // =============================================================================
-// CONFIRMATION DES POSITIONS
+// CONFIRMATION DES ACTIONS
 // =============================================================================
 
-/**
- * Confirme le placement du répondant
- */
 async function confirmPlacement() {
-    if (state.selectedValue === null) return;
+    const hintInput = document.getElementById('place-hint-input').value.trim();
+    
+    // Validation: 1 seul mot
+    if (!hintInput) {
+        showToast('Entre un indice !', 'warning');
+        return;
+    }
+    if (hintInput.includes(' ')) {
+        showToast('Ton indice doit comporter UN SEUL MOT sans espace !', 'error');
+        return;
+    }
 
     const btn = document.getElementById('btn-confirm-place');
     btn.disabled = true;
-    btn.textContent = '✅ Position enregistrée !';
+    btn.textContent = '✅ Indice envoyé !';
 
     try {
         await getRoomRef(state.roomCode).update({
-            respondentPosition: state.selectedValue,
+            hintWord: hintInput,
             status: 'guessing'
         });
     } catch (error) {
-        console.error('Erreur placement:', error);
+        console.error('Erreur indice:', error);
         showToast('Erreur de synchronisation', 'error');
         btn.disabled = false;
-        btn.textContent = '✅ Confirmer ma position';
+        btn.textContent = '✅ Envoyer l\'indice';
     }
 }
 
-/**
- * Confirme la devinette du devin
- */
 async function confirmGuess() {
     if (state.selectedValue === null) return;
 
@@ -684,38 +587,34 @@ async function confirmGuess() {
     btn.textContent = '🎯 Devinette envoyée !';
 
     try {
-        // Lire la salle actuelle pour calculer le score
         const snap = await getRoomRef(state.roomCode).once('value');
         const room = snap.val();
 
-        const respondentPos = room.respondentPosition;
+        const targetPos = room.targetValue;
         const guesserPos = state.selectedValue;
-        const distance = Math.abs(respondentPos - guesserPos);
+        const distance = Math.abs(targetPos - guesserPos);
         const points = calculatePoints(distance);
 
-        // Calculer le nouveau score du devin (le devin marque les points)
         const guesserRole = room.guesser;
         const currentScore = room.players[guesserRole]?.score || 0;
         const newScore = currentScore + points;
 
-        // Préparer l'entrée historique
         const historyEntry = {
             round: room.currentRound,
-            theme: room.theme?.text || 'Thème inconnu',
+            theme: room.theme ? `${room.theme.left} ↔ ${room.theme.right}` : 'Thème inconnu',
+            hint: room.hintWord,
             respondent: room.respondent,
-            respondentPos: respondentPos,
+            targetPos: targetPos,
             guesserPos: guesserPos,
             distance: distance,
             points: points
         };
 
-        // Récupérer l'historique existant
         const history = room.history || [];
         history.push(historyEntry);
 
-        // Mettre à jour Firebase
         const updates = {
-            guesserPosition: guesserPos,
+            guessValue: guesserPos,
             status: 'reveal',
             history: history,
         };
@@ -730,15 +629,6 @@ async function confirmGuess() {
     }
 }
 
-// =============================================================================
-// CALCUL DU SCORE
-// =============================================================================
-
-/**
- * Calcule les points selon l'écart
- * @param {number} distance - Écart absolu entre les deux positions
- * @returns {number} Points attribués
- */
 function calculatePoints(distance) {
     if (distance <= 5) return 100;
     if (distance <= 10) return 75;
@@ -747,11 +637,6 @@ function calculatePoints(distance) {
     return 0;
 }
 
-/**
- * Retourne la classe CSS selon le score
- * @param {number} points
- * @returns {string}
- */
 function getScoreClass(points) {
     if (points === 100) return 'perfect';
     if (points === 75) return 'great';
@@ -764,60 +649,50 @@ function getScoreClass(points) {
 // ÉCRAN RÉVÉLATION
 // =============================================================================
 
-/**
- * Affiche l'écran de révélation avec animations
- * @param {Object} room - Données de la salle
- */
 function showRevealScreen(room) {
-    if (state.currentScreen === 'screen-reveal') return; // Déjà affiché
+    if (state.currentScreen === 'screen-reveal') return;
 
     showScreen('screen-reveal');
 
-    const respPos = room.respondentPosition;
-    const guessPos = room.guesserPosition;
-    const distance = Math.abs(respPos - guessPos);
+    const targetPos = room.targetValue;
+    const guessPos = room.guessValue;
+    const distance = Math.abs(targetPos - guessPos);
     const points = calculatePoints(distance);
 
-    // Thème
-    document.getElementById('reveal-theme-text').textContent = room.theme?.text || '';
-    document.getElementById('reveal-theme-cat').textContent = room.theme?.category || '';
+    if (room.theme) {
+        document.getElementById('reveal-theme-left').textContent = room.theme.left;
+        document.getElementById('reveal-theme-right').textContent = room.theme.right;
+        document.getElementById('reveal-theme-cat').textContent = room.theme.category;
+    }
+    document.getElementById('reveal-hint-word').textContent = room.hintWord || '---';
 
-    // Réinitialiser les marqueurs
-    const markerResp = document.getElementById('reveal-marker-resp');
+    const markerTarget = document.getElementById('reveal-marker-resp');
     const markerGuess = document.getElementById('reveal-marker-guess');
     const connectLine = document.getElementById('reveal-connect-line');
 
-    markerResp.style.display = 'none';
+    markerTarget.style.display = 'none';
     markerGuess.style.display = 'none';
     connectLine.style.display = 'none';
 
-    // Noms dans les labels
-    const respName = room.players[room.respondent]?.name || 'Répondant';
-    const guessName = room.players[room.guesser]?.name || 'Devin';
-
-    // Animation séquentielle
     setTimeout(() => {
-        // 1. Apparition marqueur répondant
-        const posResp = getPositionOnArc(respPos);
-        markerResp.style.display = 'block';
-        markerResp.querySelector('.marker-dot').setAttribute('cx', posResp.x);
-        markerResp.querySelector('.marker-dot').setAttribute('cy', posResp.y);
-        markerResp.querySelector('.marker-line').setAttribute('x1', ARC.centerX);
-        markerResp.querySelector('.marker-line').setAttribute('y1', ARC.centerY);
-        markerResp.querySelector('.marker-line').setAttribute('x2', posResp.x);
-        markerResp.querySelector('.marker-line').setAttribute('y2', posResp.y);
-        document.getElementById('reveal-resp-label').textContent = respPos;
+        const posResp = getPositionOnArc(targetPos);
+        markerTarget.style.display = 'block';
+        markerTarget.querySelector('.marker-dot').setAttribute('cx', posResp.x);
+        markerTarget.querySelector('.marker-dot').setAttribute('cy', posResp.y);
+        markerTarget.querySelector('.marker-line').setAttribute('x1', ARC.centerX);
+        markerTarget.querySelector('.marker-line').setAttribute('y1', ARC.centerY);
+        markerTarget.querySelector('.marker-line').setAttribute('x2', posResp.x);
+        markerTarget.querySelector('.marker-line').setAttribute('y2', posResp.y);
+        document.getElementById('reveal-resp-label').textContent = targetPos;
         document.getElementById('reveal-resp-label').setAttribute('x', posResp.x);
         document.getElementById('reveal-resp-label').setAttribute('y', posResp.y);
 
-        // Re-trigger animation
-        markerResp.classList.remove('marker-reveal');
-        void markerResp.offsetHeight;
-        markerResp.classList.add('marker-reveal');
+        markerTarget.classList.remove('marker-reveal');
+        void markerTarget.offsetHeight;
+        markerTarget.classList.add('marker-reveal');
     }, 300);
 
     setTimeout(() => {
-        // 2. Apparition marqueur devin
         const posGuess = getPositionOnArc(guessPos);
         markerGuess.style.display = 'block';
         markerGuess.querySelector('.marker-dot').setAttribute('cx', posGuess.x);
@@ -836,8 +711,7 @@ function showRevealScreen(room) {
     }, 800);
 
     setTimeout(() => {
-        // 3. Ligne de connexion
-        const posResp = getPositionOnArc(respPos);
+        const posResp = getPositionOnArc(targetPos);
         const posGuess = getPositionOnArc(guessPos);
         connectLine.setAttribute('x1', posResp.x);
         connectLine.setAttribute('y1', posResp.y);
@@ -845,15 +719,13 @@ function showRevealScreen(room) {
         connectLine.setAttribute('y2', posGuess.y);
         connectLine.style.display = 'block';
 
-        // Reset animation
         connectLine.classList.remove('connecting-line');
         void connectLine.offsetHeight;
         connectLine.classList.add('connecting-line');
     }, 1200);
 
     setTimeout(() => {
-        // 4. Résultats numériques
-        document.getElementById('reveal-resp-value').textContent = respPos;
+        document.getElementById('reveal-resp-value').textContent = targetPos;
         document.getElementById('reveal-guess-value').textContent = guessPos;
         document.getElementById('reveal-distance').textContent = distance;
 
@@ -866,13 +738,10 @@ function showRevealScreen(room) {
         document.getElementById('reveal-result').style.animation = '';
     }, 1400);
 
-    // Confetti si score parfait
     if (points === 100) {
         setTimeout(() => launchConfetti(), 1800);
     }
 
-    // Bouton manche suivante : seulement pour le respondent (host de la manche)
-    const isRespondent = room.respondent === state.playerRole;
     const btnNext = document.getElementById('btn-next-round');
 
     if (room.currentRound >= room.totalRounds) {
@@ -883,7 +752,6 @@ function showRevealScreen(room) {
         btnNext.onclick = nextRound;
     }
 
-    // Les deux joueurs peuvent cliquer sur suivant
     btnNext.classList.remove('hidden');
 }
 
@@ -891,9 +759,6 @@ function showRevealScreen(room) {
 // MANCHE SUIVANTE / FIN DE PARTIE
 // =============================================================================
 
-/**
- * Passe à la manche suivante en inversant les rôles
- */
 async function nextRound() {
     try {
         const snap = await getRoomRef(state.roomCode).once('value');
@@ -908,8 +773,9 @@ async function nextRound() {
             respondent: newRespondent,
             guesser: newGuesser,
             theme: null,
-            respondentPosition: null,
-            guesserPosition: null,
+            targetValue: null,
+            hintWord: null,
+            guessValue: null,
             status: 'choosing_theme'
         });
     } catch (error) {
@@ -918,9 +784,6 @@ async function nextRound() {
     }
 }
 
-/**
- * Termine la partie et affiche les résultats
- */
 async function endGame() {
     try {
         await getRoomRef(state.roomCode).update({ status: 'finished' });
@@ -929,9 +792,6 @@ async function endGame() {
     }
 }
 
-/**
- * Affiche le tableau des scores final
- */
 function showFinalScores(room) {
     showScreen('screen-scores');
 
@@ -940,7 +800,6 @@ function showFinalScores(room) {
     const scoreA = room.players?.playerA?.score || 0;
     const scoreB = room.players?.playerB?.score || 0;
 
-    // Gagnant
     let winnerText;
     if (scoreA > scoreB) {
         winnerText = `${nameA} remporte la partie ! 🎉`;
@@ -962,18 +821,19 @@ function showFinalScores(room) {
     document.getElementById('final-total-a').textContent = scoreA;
     document.getElementById('final-total-b').textContent = scoreB;
 
-    // Historique
     const historyContainer = document.getElementById('history-list');
     const history = room.history || [];
     historyContainer.innerHTML = history.map(entry => {
-        const respName = room.players[entry.respondent]?.name || '?';
         const scoreClass = getScoreClass(entry.points);
         return `
             <div class="history-item">
                 <span class="history-round">#${entry.round}</span>
-                <span class="history-theme">${entry.theme}</span>
+                <span class="history-theme">
+                    ${entry.theme}
+                    <span class="history-theme-hint">${entry.hint}</span>
+                </span>
                 <span class="history-positions">
-                    <span style="color: var(--accent-tertiary)">${entry.respondentPos}</span>
+                    <span style="color: var(--accent-tertiary)">${entry.targetPos}</span>
                     /
                     <span style="color: var(--accent-warm)">${entry.guesserPos}</span>
                 </span>
@@ -982,17 +842,9 @@ function showFinalScores(room) {
         `;
     }).join('');
 
-    // Confetti pour le gagnant
     launchConfetti();
 }
 
-// =============================================================================
-// LANCEMENT DE PARTIE
-// =============================================================================
-
-/**
- * Lance la partie (uniquement par le joueur A)
- */
 async function startGame() {
     try {
         await getRoomRef(state.roomCode).update({
@@ -1008,21 +860,17 @@ async function startGame() {
     }
 }
 
-// =============================================================================
-// REJOUER / RETOUR ACCUEIL
-// =============================================================================
-
 async function playAgain() {
     try {
-        // Réinitialiser les scores et l'état
         await getRoomRef(state.roomCode).update({
             status: 'choosing_theme',
             currentRound: 1,
             respondent: 'playerA',
             guesser: 'playerB',
             theme: null,
-            respondentPosition: null,
-            guesserPosition: null,
+            targetValue: null,
+            hintWord: null,
+            guessValue: null,
             history: [],
             'players/playerA/score': 0,
             'players/playerB/score': 0,
@@ -1067,9 +915,6 @@ function clearSession() {
     } catch (e) {}
 }
 
-/**
- * Tente de restaurer une session précédente (après rechargement de page)
- */
 async function tryRestoreSession() {
     try {
         const saved = localStorage.getItem('demiCercle_session');
@@ -1078,7 +923,6 @@ async function tryRestoreSession() {
         const session = JSON.parse(saved);
         if (!session.roomCode || !session.playerRole) return;
 
-        // Vérifier que la salle existe encore
         if (!database) return;
 
         const snap = await getRoomRef(session.roomCode).once('value');
@@ -1089,22 +933,18 @@ async function tryRestoreSession() {
 
         const room = snap.val();
         
-        // Vérifier que notre place est toujours là
         if (!room.players?.[session.playerRole]) {
             clearSession();
             return;
         }
 
-        // Restaurer la session
         state.roomCode = session.roomCode;
         state.playerRole = session.playerRole;
         state.playerName = session.playerName;
 
-        // Reconfigurer la présence
         setupPresence(state.roomCode, state.playerRole);
         await getPlayerRef(state.roomCode, state.playerRole).update({ connected: true });
 
-        // Écouter les changements
         listenToRoom(state.roomCode);
 
         showToast('Session restaurée !', 'success');
@@ -1115,12 +955,9 @@ async function tryRestoreSession() {
 }
 
 // =============================================================================
-// UTILITAIRES
+// UTILITAIRES & LISTENERS
 // =============================================================================
 
-/**
- * Nettoie tous les listeners Firebase
- */
 function cleanupListeners() {
     state.listeners.forEach(({ ref, event, callback }) => {
         ref.off(event, callback);
@@ -1128,9 +965,6 @@ function cleanupListeners() {
     state.listeners = [];
 }
 
-/**
- * Copie le code de salle dans le presse-papier
- */
 function copyRoomCode() {
     const code = state.roomCode;
     if (!code) return;
@@ -1140,7 +974,6 @@ function copyRoomCode() {
         toast.classList.add('show');
         setTimeout(() => toast.classList.remove('show'), 2000);
     }).catch(() => {
-        // Fallback
         const input = document.createElement('input');
         input.value = code;
         document.body.appendChild(input);
@@ -1154,11 +987,6 @@ function copyRoomCode() {
     });
 }
 
-/**
- * Affiche un toast de notification
- * @param {string} message
- * @param {string} type - "info", "success", "warning", "error"
- */
 function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
@@ -1166,16 +994,12 @@ function showToast(message, type = 'info') {
     toast.textContent = message;
     container.appendChild(toast);
 
-    // Auto-suppression après 3 secondes
     setTimeout(() => {
         toast.classList.add('fade-out');
         setTimeout(() => toast.remove(), 300);
     }, 3000);
 }
 
-/**
- * Lance une animation de confetti
- */
 function launchConfetti() {
     const container = document.getElementById('confetti-container');
     const colors = ['#7c3aed', '#6366f1', '#f59e0b', '#10b981', '#ef4444', '#3b82f6', '#ec4899'];
@@ -1193,18 +1017,12 @@ function launchConfetti() {
         container.appendChild(confetti);
     }
 
-    // Nettoyer après l'animation
     setTimeout(() => {
         container.innerHTML = '';
     }, 5000);
 }
 
-// =============================================================================
-// LISTENERS D'INPUTS
-// =============================================================================
-
 function setupInputListeners() {
-    // Code de salle en majuscules automatiques
     const joinCode = document.getElementById('join-code');
     if (joinCode) {
         joinCode.addEventListener('input', (e) => {
@@ -1212,21 +1030,30 @@ function setupInputListeners() {
         });
     }
 
-    // Thème personnalisé active le bouton
-    const customTheme = document.getElementById('custom-theme');
-    if (customTheme) {
-        customTheme.addEventListener('input', (e) => {
-            const hasText = e.target.value.trim().length > 0;
-            document.getElementById('btn-confirm-theme').disabled = !hasText && !state.selectedTheme;
-            if (hasText) {
-                // Désélectionner les thèmes de la liste
-                document.querySelectorAll('.theme-option').forEach(o => o.classList.remove('selected'));
-                state.selectedTheme = null;
-            }
-        });
-    }
+    const checkCustomThemeInputs = () => {
+        const leftValue = document.getElementById('custom-theme-left')?.value.trim();
+        const rightValue = document.getElementById('custom-theme-right')?.value.trim();
+        const hasText = leftValue || rightValue;
+        document.getElementById('btn-confirm-theme').disabled = !hasText && !state.selectedTheme;
+        if (hasText) {
+            document.querySelectorAll('.theme-option').forEach(o => o.classList.remove('selected'));
+            state.selectedTheme = null;
+        }
+    };
 
-    // Enter pour soumettre
+    document.getElementById('custom-theme-left')?.addEventListener('input', checkCustomThemeInputs);
+    document.getElementById('custom-theme-right')?.addEventListener('input', checkCustomThemeInputs);
+
+    // Empêcher les espaces dans le champ "indice"
+    document.getElementById('place-hint-input')?.addEventListener('input', (e) => {
+        const val = e.target.value.replace(/\s+/g, '');
+        if (e.target.value !== val) {
+            e.target.value = val;
+            showToast('Un seul mot, sans espace !', 'warning');
+        }
+        document.getElementById('btn-confirm-place').disabled = val.length === 0;
+    });
+
     document.getElementById('create-name')?.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') createRoom();
     });
