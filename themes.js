@@ -23,7 +23,7 @@ const THEMES = [
 
     // ─── INTERNET ───
     { left: "Tréfonds d'internet", right: "Ref légendaire", category: "Internet" },
-    { left: "Influenceur pas drôle", right: "Influenceur drôle", category: "Internet" }
+    { left: "Influenceur pas drôle", right: "Influenceur drôle", category: "Internet" },
     { left: "Culture du vide", right: "Contenu révolutionnaire", category: "Internet" },
     { left: "Vidéo TikTok insupportable", right: "Vidéo à voir en boucle", category: "Internet" },
     { left: "Influenceur problématique", right: "Influenceur lisse", category: "Internet" },
