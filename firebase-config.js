@@ -7,7 +7,7 @@
 // Rendez-vous sur https://console.firebase.google.com/
 // Créez un projet → Realtime Database → Récupérez votre config
 const firebaseConfig = {
-    apiKey: "AIzaSyDxwWnaKzcua9HXbrw-tiJchfA1r_bQ14s",
+    apiKey: "AIzaSyDQjCL6eO8tkmWRHS_UcAf9AQLh12hjm0U",
     authDomain: "demicercle-db.firebaseapp.com",
     databaseURL: "https://demicercle-db-default-rtdb.europe-west1.firebasedatabase.app",
     projectId: "demicercle-db",
