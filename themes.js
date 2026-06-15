@@ -1,77 +1,59 @@
 // =============================================================================
-// themes.js — Bibliothèque de thèmes avec pôles opposés
-// Chaque thème possède un pôle gauche (0%) et un pôle droit (100%)
+// themes.js — Bibliothèque de thèmes bien trash & hilarants
+// Catégories exactes : Jeux videos, Sport, Internet, Absurde, Trash
 // =============================================================================
 
 const THEMES = [
-    // ─── NOURRITURE ───
-    { left: "Pire nourriture", right: "Meilleure nourriture", category: "Nourriture" },
-    { left: "Plat fade", right: "Explosion de saveurs", category: "Nourriture" },
-    { left: "Infecte", right: "Délicieux", category: "Nourriture" },
-    { left: "Trop cuit", right: "Cuisson parfaite", category: "Nourriture" },
-    { left: "Répugnant", right: "Appétissant", category: "Nourriture" },
-    { left: "À jeter", right: "Digne d'un étoilé", category: "Nourriture" },
+    // ─── JEUX VIDÉOS ───
+    { left: "Jeu plus injouable qu'un sudoku", right: "Jeu de l'année", category: "Jeux videos" },
+    { left: "Gameplay à péter la manette", right: "Gameplay ultra addictif", category: "Jeux videos" },
+    { left: "Communauté toxique", right: "Bonne communauté", category: "Jeux videos" },
+    { left: "Pokémon horrible", right: "Pokémon légendaire", category: "Jeux videos" },
+    { left: "Starter à chier", right: "Starter de rêve", category: "Jeux videos" },
+    { left: "Shiny lamentable", right: "Shiny plus rare qu'une meuf fidèle", category: "Jeux videos" },
+    { left: "Combat infâme", right: "Combat iconique", category: "Jeux videos" },
 
-    // ─── FILMS / SÉRIES ───
-    { left: "Film catastrophique", right: "Chef-d'œuvre", category: "Films" },
-    { left: "Acteurs épouvantables", right: "Prestation aux Oscars", category: "Films" },
-    { left: "Pire fin possible", right: "Fin mémorable", category: "Films" },
-    { left: "Série ennuyeuse", right: "Binge-watching immédiat", category: "Séries" },
-    { left: "Saison ratée", right: "Meilleure saison", category: "Séries" },
-    { left: "Effets spéciaux ridicules", right: "Visuellement bluffant", category: "Films" },
+    // ─── SPORT ───
+    { left: "Sport pour papy", right: "Meilleur Sport", category: "Sport" },
+    { left: "Athlète qui court comme un canard ivre", right: "Bête de compétition", category: "Sport" },
+    { left: "Match de Futsal D2", right: "Match légendaire", category: "Sport" },
+    { left: "Équipe des beauvais", right: "Équipe de champions", category: "Sport" },
+    { left: "Performance ridicule", right: "Performance de dieu vivant", category: "Sport" },
+    { left: "Supporter de balais", right: "Supporter ultra violent", category: "Sport" },
 
-    // ─── JEUX VIDÉO ───
-    { left: "Jeu injouable", right: "Jeu de l'année", category: "Jeux vidéo" },
-    { left: "Gameplay frustrant", right: "Gameplay addictif", category: "Jeux vidéo" },
-    { left: "Histoire inexistante", right: "Scénario captivant", category: "Jeux vidéo" },
-    { left: "Pire communauté", right: "Communauté en or", category: "Jeux vidéo" },
+    // ─── INTERNET ───
+    { left: "Tréfonds d'internet", right: "Ref légendaire", category: "Internet" },
+    { left: "Influenceur pas drôle", right: "Influenceur drôle", category: "Internet" }
+    { left: "Culture du vide", right: "Contenu révolutionnaire", category: "Internet" },
+    { left: "Vidéo TikTok insupportable", right: "Vidéo à voir en boucle", category: "Internet" },
+    { left: "Influenceur problématique", right: "Influenceur lisse", category: "Internet" },
 
-    // ─── VOYAGE ───
-    { left: "Pire destination", right: "Voyage de rêve", category: "Voyage" },
-    { left: "Cauchemar logistique", right: "Séjour parfait", category: "Voyage" },
-    { left: "Hôtel miteux", right: "Palace", category: "Voyage" },
-    { left: "Enfer touristique", right: "Paradis caché", category: "Voyage" },
 
-    // ─── TECHNOLOGIE ───
-    { left: "Inutile", right: "Révolutionnaire", category: "Technologie" },
-    { left: "Obsolète", right: "Futuriste", category: "Technologie" },
-    { left: "Pire invention", right: "Invention du siècle", category: "Technologie" },
-    { left: "Cauchemar pour la vie privée", right: "Totalement sécurisé", category: "Technologie" },
+    // ─── ABSURDE ───
+    { left: "Super-pouvoir inutile", right: "Super super-pouvoir", category: "Absurde" },
+    { left: "Mort la plus pathétique possible", right: "Mort héroïque", category: "Absurde" },
+    { left: "Apocalypse ridicule", right: "Apocalypse épique", category: "Absurde" },
+    { left: "Animal que tu veux écraser avec ta voiture", right: "Animal adorable", category: "Absurde" },
+    { left: "Fin du monde nulle", right: "Fin du monde spectaculaire", category: "Absurde" },
+    { left: "Arme de survie inutile", right: "Indispensable face aux zombies", category: "Absurde" },
+    { left: "Objet magique complètement con", right: "Artefact surpuissant", category: "Absurde" },
 
-    // ─── VIE QUOTIDIENNE / TRAVAIL ───
-    { left: "Pire corvée", right: "Plaisir coupable", category: "Vie quotidienne" },
-    { left: "Journée cauchemardesque", right: "Journée parfaite", category: "Vie quotidienne" },
-    { left: "Tâche épuisante", right: "Tâche relaxante", category: "Travail" },
-    { left: "Job détestable", right: "Métier de rêve", category: "Travail" },
-    { left: "Collègue toxique", right: "Collègue en or", category: "Travail" },
-
-    // ─── RELATIONS ───
-    { left: "Pire défaut", right: "Meilleure qualité", category: "Relations" },
-    { left: "Comportement inacceptable", right: "Comportement exemplaire", category: "Relations" },
-    { left: "Pire tue-l'amour", right: "Totalement irrésistible", category: "Relations" },
-    { left: "Sujet de dispute", right: "Sujet passionnant", category: "Relations" },
-
-    // ─── DIVERS / ABSURDE ───
-    { left: "Super-pouvoir inutile", right: "Super-pouvoir ultime", category: "Questions absurdes" },
-    { left: "Arme de survie inutile", right: "Indispensable face aux zombies", category: "Questions absurdes" },
-    { left: "Pire mort possible", right: "Mort héroïque", category: "Questions absurdes" },
-    { left: "Animal terrifiant", right: "Animal adorable", category: "Questions absurdes" },
-    { left: "Pire objet magique", right: "Meilleur objet magique", category: "Questions absurdes" }
+    // ─── TRASH ───
+    { left: "Pire baise de toute ta vie", right: "Meilleur coup ever", category: "Trash" },
+    { left: "Extrême gauche", right: "Extrême droite", category: "Trash" },
+    { left: "Relation toxique", right: "Green flag", category: "Trash" },
+    { left: "Contenu complètement dégénéré", right: "Contenu culte", category: "Trash" },
+    { left: "Humour noir qui passe mal", right: "Blague légendaire", category: "Trash" },
 ];
 
-// Liste des catégories disponibles
+// Liste des catégories exactes
 const CATEGORIES = [
     "Toutes",
-    "Nourriture",
-    "Films",
-    "Séries",
-    "Jeux vidéo",
-    "Voyage",
-    "Relations",
-    "Technologie",
-    "Travail",
-    "Vie quotidienne",
-    "Questions absurdes"
+    "Jeux videos",
+    "Sport",
+    "Internet",
+    "Absurde",
+    "Trash"
 ];
 
 /**
