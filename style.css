@@ -1,6 +1,5 @@
 /* =============================================================================
-   style.css — Jeu du Demi-Cercle
-   Design dark mode, glassmorphism, animations fluides
+   style.css — Jeu du Demi-Cercle (Mise à jour Déduction)
    ============================================================================= */
 
 /* ─── Google Fonts ─── */
@@ -141,12 +140,17 @@ h1 { font-size: 2.2rem; }
 h2 { font-size: 1.6rem; }
 h3 { font-size: 1.2rem; }
 
-.gradient-text {
+.gradient-text, .text-gradient {
     background: var(--gradient-primary);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
 }
+
+.text-xl { font-size: 1.8rem; }
+.font-bold { font-weight: 800; }
+.tracking-wider { letter-spacing: 0.05em; }
+.uppercase { text-transform: uppercase; }
 
 /* ─── Écrans (Sections) ─── */
 .screen {
@@ -680,10 +684,10 @@ textarea::placeholder {
     color: var(--text-muted);
 }
 
-/* ─── Thème ─── */
+/* ─── Thème (Pôles) ─── */
 .theme-display {
     text-align: center;
-    padding: 24px;
+    padding: 24px 16px;
     background: var(--bg-glass);
     border: 1px solid var(--border-accent);
     border-radius: var(--radius-lg);
@@ -691,15 +695,41 @@ textarea::placeholder {
 }
 
 .theme-category {
-    margin-bottom: 10px;
+    margin-bottom: 16px;
 }
 
-.theme-text {
+.theme-poles {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     font-family: 'Outfit', sans-serif;
-    font-size: 1.3rem;
-    font-weight: 600;
-    line-height: 1.4;
+}
+
+.pole {
+    flex: 1;
+    font-size: 1.1rem;
+    font-weight: 700;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-sm);
     color: var(--text-primary);
+    line-height: 1.3;
+}
+
+.pole.left {
+    border-left: 3px solid var(--accent-secondary);
+}
+
+.pole.right {
+    border-right: 3px solid var(--accent-warm);
+}
+
+.pole-separator {
+    color: var(--text-muted);
+    font-weight: 800;
+    font-size: 1.2rem;
+    opacity: 0.5;
 }
 
 /* ─── Sélection de thème ─── */
@@ -770,8 +800,18 @@ textarea::placeholder {
     transition: var(--transition-fast);
     font-size: 0.9rem;
     color: var(--text-secondary);
-    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
 }
+
+.theme-option-left, .theme-option-right {
+    flex: 1;
+}
+.theme-option-left { text-align: left; }
+.theme-option-right { text-align: right; }
+.theme-option-sep { color: var(--text-muted); opacity: 0.5; font-size: 0.8rem; }
 
 .theme-option:hover {
     background: var(--bg-glass-hover);
@@ -785,8 +825,10 @@ textarea::placeholder {
     color: var(--text-primary);
 }
 
-.custom-theme-input {
-    margin-top: 8px;
+.custom-theme-poles {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .separator {
@@ -820,8 +862,11 @@ textarea::placeholder {
 .semicircle-svg {
     width: 100%;
     height: auto;
-    cursor: pointer;
     filter: drop-shadow(0 0 20px rgba(124, 58, 237, 0.15));
+}
+
+.semicircle-svg.interactive {
+    cursor: pointer;
 }
 
 .semicircle-arc {
@@ -832,7 +877,7 @@ textarea::placeholder {
     transition: stroke-width 0.2s ease;
 }
 
-.semicircle-svg:hover .semicircle-arc {
+.semicircle-svg.interactive:hover .semicircle-arc {
     stroke-width: 14;
 }
 
@@ -873,7 +918,7 @@ textarea::placeholder {
     transition: r 0.2s ease;
 }
 
-.marker-dot:hover {
+.semicircle-svg.interactive .marker-dot:hover {
     r: 12;
 }
 
@@ -959,13 +1004,13 @@ textarea::placeholder {
     position: relative;
 }
 
-/* Marqueur Joueur A (respondant) */
+/* Marqueur Joueur A (respondant / cible) */
 .marker-respondent .marker-dot {
     fill: var(--accent-tertiary);
     filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.6));
 }
 
-/* Marqueur Joueur B (devin) */
+/* Marqueur Joueur B (devin / estimation) */
 .marker-guesser .marker-dot {
     fill: var(--accent-warm);
     filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.6));
@@ -1115,6 +1160,17 @@ textarea::placeholder {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.history-theme-hint {
+    background: rgba(255,255,255,0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: bold;
 }
 
 .history-positions {
@@ -1369,6 +1425,11 @@ textarea::placeholder {
     .category-chip {
         padding: 6px 12px;
         font-size: 0.75rem;
+    }
+    
+    .pole {
+        font-size: 0.9rem;
+        padding: 6px;
     }
 }
 

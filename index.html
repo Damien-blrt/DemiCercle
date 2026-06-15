@@ -187,7 +187,10 @@
             <div class="separator">ou</div>
 
             <div class="custom-theme-input">
-                <input type="text" id="custom-theme" placeholder="Écris ton propre thème..." maxlength="120">
+                <div class="custom-theme-poles">
+                    <input type="text" id="custom-theme-left" placeholder="Pôle gauche (ex: Pire nourriture)" maxlength="50">
+                    <input type="text" id="custom-theme-right" placeholder="Pôle droit (ex: Meilleure nourriture)" maxlength="50">
+                </div>
             </div>
 
             <div class="mt-16">
@@ -252,12 +255,16 @@
 
         <div class="role-indicator respondent">
             <span class="role-icon">🎯</span>
-            <span>Place ton curseur secrètement</span>
+            <span>Ton objectif : faire deviner cette valeur avec UN SEUL MOT</span>
         </div>
 
         <div class="theme-display">
             <span class="badge badge-accent theme-category" id="place-theme-cat">Catégorie</span>
-            <div class="theme-text" id="place-theme-text">Thème</div>
+            <div class="theme-poles">
+                <div class="pole left" id="place-theme-left">Gauche</div>
+                <div class="pole-separator">↔</div>
+                <div class="pole right" id="place-theme-right">Droite</div>
+            </div>
         </div>
 
         <!-- Demi-cercle interactif -->
@@ -314,11 +321,15 @@
 
         <div class="value-display">
             <div class="value-number" id="place-value">—</div>
-            <div class="value-label">Ta position</div>
+            <div class="value-label">Valeur cible à faire deviner</div>
+        </div>
+
+        <div class="input-group mt-16 mb-16 hint-input-container">
+            <input type="text" id="place-hint-input" placeholder="Ton indice (1 SEUL MOT)" maxlength="20" autocomplete="off" style="text-align: center; font-size: 1.2rem; font-weight: bold;">
         </div>
 
         <button id="btn-confirm-place" class="btn btn-primary btn-block btn-lg" onclick="confirmPlacement()" disabled>
-            ✅ Confirmer ma position
+            ✅ Envoyer l'indice
         </button>
     </section>
 
@@ -348,7 +359,16 @@
 
         <div class="theme-display">
             <span class="badge badge-accent theme-category" id="guess-theme-cat">Catégorie</span>
-            <div class="theme-text" id="guess-theme-text">Thème</div>
+            <div class="theme-poles">
+                <div class="pole left" id="guess-theme-left">Gauche</div>
+                <div class="pole-separator">↔</div>
+                <div class="pole right" id="guess-theme-right">Droite</div>
+            </div>
+        </div>
+
+        <div class="hint-display card card-sm mt-16 mb-16 text-center">
+            <div class="text-muted text-sm uppercase tracking-wider mb-8">Indice du Répondant</div>
+            <div class="hint-word text-gradient text-xl font-bold" id="guess-hint-word">---</div>
         </div>
 
         <!-- Demi-cercle interactif -->
@@ -423,14 +443,18 @@
 
         <div class="theme-display">
             <span class="badge badge-accent theme-category" id="wo-theme-cat">Catégorie</span>
-            <div class="theme-text" id="wo-theme-text">Thème</div>
+            <div class="theme-poles">
+                <div class="pole left" id="wo-theme-left">Gauche</div>
+                <div class="pole-separator">↔</div>
+                <div class="pole right" id="wo-theme-right">Droite</div>
+            </div>
         </div>
 
         <div class="card">
             <div class="waiting-overlay">
                 <div class="spinner"></div>
-                <h3 id="wo-waiting-text">L'autre joueur réfléchit...</h3>
-                <p class="text-muted mt-8">Tu as déjà validé ta position ✅</p>
+                <h3 id="wo-waiting-text">En attente de l'autre joueur...</h3>
+                <p class="text-muted mt-8" id="wo-waiting-subtext">Patiente un instant</p>
             </div>
         </div>
     </section>
@@ -456,7 +480,16 @@
 
         <div class="theme-display">
             <span class="badge badge-accent theme-category" id="reveal-theme-cat">Catégorie</span>
-            <div class="theme-text" id="reveal-theme-text">Thème</div>
+            <div class="theme-poles">
+                <div class="pole left" id="reveal-theme-left">Gauche</div>
+                <div class="pole-separator">↔</div>
+                <div class="pole right" id="reveal-theme-right">Droite</div>
+            </div>
+        </div>
+
+        <div class="hint-display card card-sm mt-16 mb-16 text-center">
+            <div class="text-muted text-sm uppercase tracking-wider mb-8">Indice donné</div>
+            <div class="hint-word text-gradient text-xl font-bold" id="reveal-hint-word">---</div>
         </div>
 
         <!-- Demi-cercle avec les deux marqueurs -->
@@ -504,12 +537,12 @@
             <div class="reveal-result" id="reveal-result">
                 <div class="distance-display">
                     <div class="distance-item">
-                        <div class="label">Répondant</div>
+                        <div class="label">Cible</div>
                         <div class="value a" id="reveal-resp-value">--</div>
                     </div>
                     <div class="distance-divider"></div>
                     <div class="distance-item">
-                        <div class="label">Devin</div>
+                        <div class="label">Estimation</div>
                         <div class="value b" id="reveal-guess-value">--</div>
                     </div>
                     <div class="distance-divider"></div>
