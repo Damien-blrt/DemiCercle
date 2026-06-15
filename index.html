@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Jeu du Demi-Cercle — Devinez la position de votre adversaire sur un demi-cercle. Jeu multijoueur en temps réel pour 2 joueurs.">
+    <meta name="theme-color" content="#06080f">
+    <title>Demi-Cercle — Le Jeu de Devinettes</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='80'>🎯</text></svg>">
+</head>
+<body>
+
+<div id="app">
+
+    <!-- ═══════════════════════════════════════════
+         ÉCRAN: ACCUEIL
+         ═══════════════════════════════════════════ -->
+    <section id="screen-home" class="screen active">
+        <div class="hero">
+            <div class="hero-icon">
+                <div class="hero-semicircle">
+                    <div class="hero-dot"></div>
+                </div>
+            </div>
+            <h1><span class="gradient-text">Demi-Cercle</span></h1>
+            <p>Devinez la position de votre adversaire sur le demi-cercle. Plus vous êtes proches, plus vous marquez !</p>
+        </div>
+
+        <div class="home-buttons">
+            <button id="btn-create" class="btn btn-primary btn-lg btn-block" onclick="showCreateScreen()">
+                🎮 Créer une partie
+            </button>
+            <button id="btn-join" class="btn btn-secondary btn-lg btn-block" onclick="showJoinScreen()">
+                🔗 Rejoindre une partie
+            </button>
+        </div>
+
+        <div class="text-center text-sm text-muted mt-24">
+            <p>2 joueurs • Temps réel • Gratuit</p>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════
+         ÉCRAN: CRÉER UNE PARTIE
+         ═══════════════════════════════════════════ -->
+    <section id="screen-create" class="screen">
+        <button class="btn btn-secondary btn-sm" onclick="showScreen('screen-home')" style="align-self: flex-start;">
+            ← Retour
+        </button>
+
+        <div class="card">
+            <h2 class="text-center mb-16">🎮 Créer une partie</h2>
+            <div class="input-group">
+                <label for="create-name">Ton pseudo</label>
+                <input type="text" id="create-name" placeholder="Entrez votre pseudo..." maxlength="20" autocomplete="off">
+            </div>
+            <div class="mt-24">
+                <button id="btn-create-room" class="btn btn-primary btn-block" onclick="createRoom()">
+                    Créer la salle
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════
+         ÉCRAN: REJOINDRE UNE PARTIE
+         ═══════════════════════════════════════════ -->
+    <section id="screen-join" class="screen">
+        <button class="btn btn-secondary btn-sm" onclick="showScreen('screen-home')" style="align-self: flex-start;">
+            ← Retour
+        </button>
+
+        <div class="card">
+            <h2 class="text-center mb-16">🔗 Rejoindre une partie</h2>
+            <div class="input-group mb-16">
+                <label for="join-name">Ton pseudo</label>
+                <input type="text" id="join-name" placeholder="Entrez votre pseudo..." maxlength="20" autocomplete="off">
+            </div>
+            <div class="input-group">
+                <label for="join-code">Code de la salle</label>
+                <input type="text" id="join-code" class="code-input" placeholder="ABC123" maxlength="6" autocomplete="off">
+            </div>
+            <div class="mt-24">
+                <button id="btn-join-room" class="btn btn-success btn-block" onclick="joinRoom()">
+                    Rejoindre
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════
+         ÉCRAN: SALLE D'ATTENTE
+         ═══════════════════════════════════════════ -->
+    <section id="screen-waiting" class="screen">
+        <div class="card">
+            <h2 class="text-center mb-16">Salle d'attente</h2>
+            <p class="text-center text-muted mb-16">Partagez ce code avec votre adversaire :</p>
+            
+            <div class="room-code-display" onclick="copyRoomCode()" title="Cliquer pour copier">
+                <div>
+                    <div class="code" id="waiting-room-code">------</div>
+                    <div class="copy-hint">📋 Cliquer pour copier</div>
+                </div>
+            </div>
+
+            <div class="mt-24">
+                <div class="players-info" id="waiting-players">
+                    <div class="player-badge is-you">
+                        <div class="player-avatar a">A</div>
+                        <div>
+                            <div class="player-name" id="waiting-player-a">En attente...</div>
+                            <div class="player-status"><span class="dot online"></span>Connecté</div>
+                        </div>
+                    </div>
+                    <div class="vs-divider">VS</div>
+                    <div class="player-badge">
+                        <div class="player-avatar b">B</div>
+                        <div>
+                            <div class="player-name" id="waiting-player-b">En attente...</div>
+                            <div class="player-status" id="waiting-player-b-status">
+                                <span class="dot offline"></span>Non connecté
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-24 text-center">
+                <div class="waiting-animation" id="waiting-anim">
+                    <div class="waiting-dots">
+                        <span></span><span></span><span></span>
+                    </div>
+                    <span>En attente du 2ème joueur...</span>
+                </div>
+                <button id="btn-start-game" class="btn btn-primary btn-block hidden" onclick="startGame()">
+                    🚀 Lancer la partie !
+                </button>
+            </div>
+        </div>
+
+        <button class="btn btn-secondary btn-sm mt-16" onclick="leaveRoom()">
+            Quitter la salle
+        </button>
+    </section>
+
+    <!-- ═══════════════════════════════════════════
+         ÉCRAN: CHOIX DU THÈME (Répondant)
+         ═══════════════════════════════════════════ -->
+    <section id="screen-theme" class="screen">
+        <!-- Infos joueurs + scores -->
+        <div class="scores-header" id="theme-scores-header">
+            <div class="score-display">
+                <div class="score-value a" id="theme-score-a">0</div>
+                <div class="score-label" id="theme-name-a">Joueur A</div>
+            </div>
+            <div class="round-indicator">
+                <div class="round-number" id="theme-round">1/10</div>
+                <div class="round-label">Manche</div>
+            </div>
+            <div class="score-display">
+                <div class="score-value b" id="theme-score-b">0</div>
+                <div class="score-label" id="theme-name-b">Joueur B</div>
+            </div>
+        </div>
+
+        <div class="role-indicator respondent">
+            <span class="role-icon">🎯</span>
+            <span>Tu es le Répondant — Choisis un thème</span>
+        </div>
+
+        <div class="card theme-selector">
+            <h3 class="mb-16">Choisis un thème</h3>
+
+            <!-- Filtres par catégorie -->
+            <div class="category-filters" id="category-filters"></div>
+
+            <!-- Liste des thèmes -->
+            <div class="theme-list" id="theme-list"></div>
+
+            <!-- Tirage aléatoire -->
+            <button class="btn btn-secondary btn-sm btn-block" onclick="selectRandomThemeUI()">
+                🎲 Thème aléatoire
+            </button>
+
+            <!-- Thème personnalisé -->
+            <div class="separator">ou</div>
+
+            <div class="custom-theme-input">
+                <input type="text" id="custom-theme" placeholder="Écris ton propre thème..." maxlength="120">
+            </div>
+
+            <div class="mt-16">
+                <button id="btn-confirm-theme" class="btn btn-primary btn-block" onclick="confirmTheme()" disabled>
+                    Valider le thème
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════
+         ÉCRAN: ATTENTE DU THÈME (Devin)
+         ═══════════════════════════════════════════ -->
+    <section id="screen-theme-wait" class="screen">
+        <div class="scores-header" id="tw-scores-header">
+            <div class="score-display">
+                <div class="score-value a" id="tw-score-a">0</div>
+                <div class="score-label" id="tw-name-a">Joueur A</div>
+            </div>
+            <div class="round-indicator">
+                <div class="round-number" id="tw-round">1/10</div>
+                <div class="round-label">Manche</div>
+            </div>
+            <div class="score-display">
+                <div class="score-value b" id="tw-score-b">0</div>
+                <div class="score-label" id="tw-name-b">Joueur B</div>
+            </div>
+        </div>
+
+        <div class="role-indicator guesser">
+            <span class="role-icon">🤔</span>
+            <span>Tu es le Devin — Prépare-toi !</span>
+        </div>
+
+        <div class="card">
+            <div class="waiting-overlay">
+                <div class="spinner"></div>
+                <h3>Le Répondant choisit un thème...</h3>
+                <p class="text-muted mt-8">Patiente un instant</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════
+         ÉCRAN: PLACEMENT SECRET (Répondant)
+         ═══════════════════════════════════════════ -->
+    <section id="screen-place" class="screen">
+        <div class="scores-header" id="place-scores-header">
+            <div class="score-display">
+                <div class="score-value a" id="place-score-a">0</div>
+                <div class="score-label" id="place-name-a">Joueur A</div>
+            </div>
+            <div class="round-indicator">
+                <div class="round-number" id="place-round">1/10</div>
+                <div class="round-label">Manche</div>
+            </div>
+            <div class="score-display">
+                <div class="score-value b" id="place-score-b">0</div>
+                <div class="score-label" id="place-name-b">Joueur B</div>
+            </div>
+        </div>
+
+        <div class="role-indicator respondent">
+            <span class="role-icon">🎯</span>
+            <span>Place ton curseur secrètement</span>
+        </div>
+
+        <div class="theme-display">
+            <span class="badge badge-accent theme-category" id="place-theme-cat">Catégorie</span>
+            <div class="theme-text" id="place-theme-text">Thème</div>
+        </div>
+
+        <!-- Demi-cercle interactif -->
+        <div class="semicircle-container" id="place-semicircle">
+            <svg class="semicircle-svg" viewBox="0 0 400 230" id="place-svg">
+                <defs>
+                    <linearGradient id="arcGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:#6366f1"/>
+                        <stop offset="50%" style="stop-color:#8b5cf6"/>
+                        <stop offset="100%" style="stop-color:#f59e0b"/>
+                    </linearGradient>
+                    <linearGradient id="arcGradient2" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:#6366f1"/>
+                        <stop offset="50%" style="stop-color:#8b5cf6"/>
+                        <stop offset="100%" style="stop-color:#f59e0b"/>
+                    </linearGradient>
+                </defs>
+
+                <!-- Track de fond -->
+                <path class="semicircle-track" d="M 40 200 A 160 160 0 0 1 360 200" />
+                
+                <!-- Arc coloré -->
+                <path class="semicircle-arc" d="M 40 200 A 160 160 0 0 1 360 200" />
+
+                <!-- Ticks -->
+                <line class="semicircle-tick" x1="40" y1="200" x2="40" y2="185"/>
+                <line class="semicircle-tick" x1="200" y1="40" x2="200" y2="55"/>
+                <line class="semicircle-tick" x1="360" y1="200" x2="360" y2="185"/>
+
+                <!-- Labels fixes -->
+                <text class="semicircle-label" x="30" y="220" text-anchor="middle">0</text>
+                <text class="semicircle-label" x="200" y="30" text-anchor="middle">50</text>
+                <text class="semicircle-label" x="370" y="220" text-anchor="middle">100</text>
+
+                <!-- Marqueur joueur (sera positionné par JS) -->
+                <g class="player-marker" id="place-marker" style="display:none;">
+                    <line class="marker-line" x1="200" y1="200" x2="200" y2="200" stroke="#8b5cf6" stroke-width="1.5"/>
+                    <circle class="marker-dot" cx="200" cy="200" r="10" fill="#8b5cf6"/>
+                    <text x="200" y="200" text-anchor="middle" dy="-18" fill="white" font-family="Outfit" font-size="13" font-weight="700" id="place-marker-label"></text>
+                </g>
+            </svg>
+        </div>
+
+        <div class="semicircle-labels">
+            <div class="semicircle-label-item">
+                <div class="label-value">0</div>
+                <div class="label-text">Pas du tout</div>
+            </div>
+            <div class="semicircle-label-item">
+                <div class="label-value">100</div>
+                <div class="label-text">Énormément</div>
+            </div>
+        </div>
+
+        <div class="value-display">
+            <div class="value-number" id="place-value">—</div>
+            <div class="value-label">Ta position</div>
+        </div>
+
+        <button id="btn-confirm-place" class="btn btn-primary btn-block btn-lg" onclick="confirmPlacement()" disabled>
+            ✅ Confirmer ma position
+        </button>
+    </section>
+
+    <!-- ═══════════════════════════════════════════
+         ÉCRAN: DEVINETTE (Devin)
+         ═══════════════════════════════════════════ -->
+    <section id="screen-guess" class="screen">
+        <div class="scores-header" id="guess-scores-header">
+            <div class="score-display">
+                <div class="score-value a" id="guess-score-a">0</div>
+                <div class="score-label" id="guess-name-a">Joueur A</div>
+            </div>
+            <div class="round-indicator">
+                <div class="round-number" id="guess-round">1/10</div>
+                <div class="round-label">Manche</div>
+            </div>
+            <div class="score-display">
+                <div class="score-value b" id="guess-score-b">0</div>
+                <div class="score-label" id="guess-name-b">Joueur B</div>
+            </div>
+        </div>
+
+        <div class="role-indicator guesser">
+            <span class="role-icon">🤔</span>
+            <span>Devine la position du Répondant !</span>
+        </div>
+
+        <div class="theme-display">
+            <span class="badge badge-accent theme-category" id="guess-theme-cat">Catégorie</span>
+            <div class="theme-text" id="guess-theme-text">Thème</div>
+        </div>
+
+        <!-- Demi-cercle interactif -->
+        <div class="semicircle-container" id="guess-semicircle">
+            <svg class="semicircle-svg" viewBox="0 0 400 230" id="guess-svg">
+                <defs>
+                    <linearGradient id="arcGradientGuess" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:#6366f1"/>
+                        <stop offset="50%" style="stop-color:#8b5cf6"/>
+                        <stop offset="100%" style="stop-color:#f59e0b"/>
+                    </linearGradient>
+                </defs>
+
+                <path class="semicircle-track" d="M 40 200 A 160 160 0 0 1 360 200"/>
+                <path class="semicircle-arc" d="M 40 200 A 160 160 0 0 1 360 200" style="stroke: url(#arcGradientGuess);"/>
+
+                <line class="semicircle-tick" x1="40" y1="200" x2="40" y2="185"/>
+                <line class="semicircle-tick" x1="200" y1="40" x2="200" y2="55"/>
+                <line class="semicircle-tick" x1="360" y1="200" x2="360" y2="185"/>
+
+                <text class="semicircle-label" x="30" y="220" text-anchor="middle">0</text>
+                <text class="semicircle-label" x="200" y="30" text-anchor="middle">50</text>
+                <text class="semicircle-label" x="370" y="220" text-anchor="middle">100</text>
+
+                <g class="player-marker" id="guess-marker" style="display:none;">
+                    <line class="marker-line" x1="200" y1="200" x2="200" y2="200" stroke="#f59e0b" stroke-width="1.5"/>
+                    <circle class="marker-dot" cx="200" cy="200" r="10" fill="#f59e0b"/>
+                    <text x="200" y="200" text-anchor="middle" dy="-18" fill="white" font-family="Outfit" font-size="13" font-weight="700" id="guess-marker-label"></text>
+                </g>
+            </svg>
+        </div>
+
+        <div class="semicircle-labels">
+            <div class="semicircle-label-item">
+                <div class="label-value">0</div>
+                <div class="label-text">Pas du tout</div>
+            </div>
+            <div class="semicircle-label-item">
+                <div class="label-value">100</div>
+                <div class="label-text">Énormément</div>
+            </div>
+        </div>
+
+        <div class="value-display">
+            <div class="value-number" id="guess-value">—</div>
+            <div class="value-label">Ta devinette</div>
+        </div>
+
+        <button id="btn-confirm-guess" class="btn btn-warm btn-block btn-lg" onclick="confirmGuess()" disabled>
+            🎯 Valider ma devinette
+        </button>
+    </section>
+
+    <!-- ═══════════════════════════════════════════
+         ÉCRAN: ATTENTE RÉPONSE (quand on attend l'autre)
+         ═══════════════════════════════════════════ -->
+    <section id="screen-wait-other" class="screen">
+        <div class="scores-header" id="wo-scores-header">
+            <div class="score-display">
+                <div class="score-value a" id="wo-score-a">0</div>
+                <div class="score-label" id="wo-name-a">Joueur A</div>
+            </div>
+            <div class="round-indicator">
+                <div class="round-number" id="wo-round">1/10</div>
+                <div class="round-label">Manche</div>
+            </div>
+            <div class="score-display">
+                <div class="score-value b" id="wo-score-b">0</div>
+                <div class="score-label" id="wo-name-b">Joueur B</div>
+            </div>
+        </div>
+
+        <div class="theme-display">
+            <span class="badge badge-accent theme-category" id="wo-theme-cat">Catégorie</span>
+            <div class="theme-text" id="wo-theme-text">Thème</div>
+        </div>
+
+        <div class="card">
+            <div class="waiting-overlay">
+                <div class="spinner"></div>
+                <h3 id="wo-waiting-text">L'autre joueur réfléchit...</h3>
+                <p class="text-muted mt-8">Tu as déjà validé ta position ✅</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════
+         ÉCRAN: RÉVÉLATION
+         ═══════════════════════════════════════════ -->
+    <section id="screen-reveal" class="screen">
+        <div class="scores-header" id="reveal-scores-header">
+            <div class="score-display">
+                <div class="score-value a" id="reveal-score-a">0</div>
+                <div class="score-label" id="reveal-name-a">Joueur A</div>
+            </div>
+            <div class="round-indicator">
+                <div class="round-number" id="reveal-round">1/10</div>
+                <div class="round-label">Manche</div>
+            </div>
+            <div class="score-display">
+                <div class="score-value b" id="reveal-score-b">0</div>
+                <div class="score-label" id="reveal-name-b">Joueur B</div>
+            </div>
+        </div>
+
+        <div class="theme-display">
+            <span class="badge badge-accent theme-category" id="reveal-theme-cat">Catégorie</span>
+            <div class="theme-text" id="reveal-theme-text">Thème</div>
+        </div>
+
+        <!-- Demi-cercle avec les deux marqueurs -->
+        <div class="reveal-container">
+            <div class="semicircle-container">
+                <svg class="semicircle-svg" viewBox="0 0 400 230" id="reveal-svg">
+                    <defs>
+                        <linearGradient id="arcGradientReveal" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#6366f1"/>
+                            <stop offset="50%" style="stop-color:#8b5cf6"/>
+                            <stop offset="100%" style="stop-color:#f59e0b"/>
+                        </linearGradient>
+                    </defs>
+
+                    <path class="semicircle-track" d="M 40 200 A 160 160 0 0 1 360 200"/>
+                    <path class="semicircle-arc" d="M 40 200 A 160 160 0 0 1 360 200" style="stroke: url(#arcGradientReveal);"/>
+
+                    <line class="semicircle-tick" x1="40" y1="200" x2="40" y2="185"/>
+                    <line class="semicircle-tick" x1="200" y1="40" x2="200" y2="55"/>
+                    <line class="semicircle-tick" x1="360" y1="200" x2="360" y2="185"/>
+
+                    <text class="semicircle-label" x="30" y="220" text-anchor="middle">0</text>
+                    <text class="semicircle-label" x="200" y="30" text-anchor="middle">50</text>
+                    <text class="semicircle-label" x="370" y="220" text-anchor="middle">100</text>
+
+                    <!-- Ligne de connexion -->
+                    <line id="reveal-connect-line" class="connecting-line" x1="0" y1="0" x2="0" y2="0" style="display:none;"/>
+
+                    <!-- Marqueur répondant -->
+                    <g class="marker-respondent marker-reveal" id="reveal-marker-resp" style="display:none;">
+                        <line class="marker-line" x1="200" y1="200" x2="200" y2="200" stroke="#8b5cf6" stroke-width="1.5"/>
+                        <circle class="marker-dot" cx="200" cy="200" r="10"/>
+                        <text x="200" y="200" text-anchor="middle" dy="-18" fill="#c4b5fd" font-family="Outfit" font-size="13" font-weight="700" id="reveal-resp-label"></text>
+                    </g>
+
+                    <!-- Marqueur devin -->
+                    <g class="marker-guesser marker-reveal delay" id="reveal-marker-guess" style="display:none;">
+                        <line class="marker-line" x1="200" y1="200" x2="200" y2="200" stroke="#f59e0b" stroke-width="1.5"/>
+                        <circle class="marker-dot" cx="200" cy="200" r="10"/>
+                        <text x="200" y="200" text-anchor="middle" dy="-18" fill="#fcd34d" font-family="Outfit" font-size="13" font-weight="700" id="reveal-guess-label"></text>
+                    </g>
+                </svg>
+            </div>
+
+            <div class="reveal-result" id="reveal-result">
+                <div class="distance-display">
+                    <div class="distance-item">
+                        <div class="label">Répondant</div>
+                        <div class="value a" id="reveal-resp-value">--</div>
+                    </div>
+                    <div class="distance-divider"></div>
+                    <div class="distance-item">
+                        <div class="label">Devin</div>
+                        <div class="value b" id="reveal-guess-value">--</div>
+                    </div>
+                    <div class="distance-divider"></div>
+                    <div class="distance-item">
+                        <div class="label">Écart</div>
+                        <div class="value distance" id="reveal-distance">--</div>
+                    </div>
+                </div>
+
+                <div class="round-score" id="reveal-round-score">
+                    <div class="points" id="reveal-points">0</div>
+                    <div class="points-label">points cette manche</div>
+                </div>
+            </div>
+        </div>
+
+        <button id="btn-next-round" class="btn btn-primary btn-block btn-lg mt-16" onclick="nextRound()">
+            Manche suivante →
+        </button>
+    </section>
+
+    <!-- ═══════════════════════════════════════════
+         ÉCRAN: TABLEAU DES SCORES FINAL
+         ═══════════════════════════════════════════ -->
+    <section id="screen-scores" class="screen">
+        <div class="final-scores">
+            <div class="winner-announcement" id="winner-announcement">
+                <h2>🏆 <span class="gradient-text">Partie terminée !</span></h2>
+                <div class="winner-name" id="winner-name">—</div>
+            </div>
+
+            <div class="final-score-cards" id="final-score-cards">
+                <div class="final-score-card" id="final-card-a">
+                    <div class="player-name" id="final-name-a">Joueur A</div>
+                    <div class="total-score score-value a" id="final-total-a">0</div>
+                    <div class="score-label">points</div>
+                </div>
+                <div class="final-score-card" id="final-card-b">
+                    <div class="player-name" id="final-name-b">Joueur B</div>
+                    <div class="total-score score-value b" id="final-total-b">0</div>
+                    <div class="score-label">points</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 class="mb-16">📜 Historique des manches</h3>
+                <div class="history-list" id="history-list">
+                    <!-- Rempli dynamiquement -->
+                </div>
+            </div>
+
+            <div class="btn-group mt-24">
+                <button class="btn btn-primary" onclick="playAgain()">🔄 Rejouer</button>
+                <button class="btn btn-secondary" onclick="backToHome()">🏠 Accueil</button>
+            </div>
+        </div>
+    </section>
+
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Copié toast -->
+<div class="copied-toast" id="copied-toast">✅ Code copié !</div>
+
+<!-- Confetti container -->
+<div class="confetti-container" id="confetti-container"></div>
+
+<!-- Firebase SDK (compat v9) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<!-- Application Scripts -->
+<script src="themes.js"></script>
+<script src="firebase-config.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
