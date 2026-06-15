@@ -1062,3 +1062,9 @@ function setupInputListeners() {
         if (e.key === 'Enter') joinRoom();
     });
 }
+
+function confirmLeaveRoom() {
+    if (confirm("Voulez-vous vraiment quitter la partie en cours ?")) {
+        leaveRoom();
+    }
+}
