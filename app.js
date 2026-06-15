@@ -264,48 +264,59 @@ function handleRoomUpdate(room) {
 
         case 'choosing_theme':
             if (isRespondent) {
-                state.selectedTheme = null;
-                renderThemeList();
-                showScreen('screen-theme');
+                if (state.currentScreen !== 'screen-theme') {
+                    state.selectedTheme = null;
+                    renderThemeList();
+                    showScreen('screen-theme');
+                }
             } else {
-                showScreen('screen-theme-wait');
+                if (state.currentScreen !== 'screen-theme-wait') {
+                    showScreen('screen-theme-wait');
+                }
             }
             break;
 
         case 'placing':
             if (isRespondent) {
-                updateThemePoles('place');
-                document.getElementById('place-hint-input').value = '';
-                document.getElementById('btn-confirm-place').disabled = true;
-                
-                // Afficher la target value sur le SVG
-                updateMarker('place', room.targetValue);
-                updateValueDisplay('place', room.targetValue);
-                
-                showScreen('screen-place');
-                // Attention: Pas d'interaction SVG pour le répondant !
+                if (state.currentScreen !== 'screen-place') {
+                    updateThemePoles('place');
+                    document.getElementById('place-hint-input').value = '';
+                    document.getElementById('btn-confirm-place').disabled = true;
+                    
+                    // Afficher la target value sur le SVG
+                    updateMarker('place', room.targetValue);
+                    updateValueDisplay('place', room.targetValue);
+                    
+                    showScreen('screen-place');
+                }
             } else {
-                updateThemePoles('wo');
-                document.getElementById('wo-waiting-text').textContent = 'Le Répondant réfléchit...';
-                document.getElementById('wo-waiting-subtext').textContent = "Il doit trouver un indice d'un seul mot pour te faire deviner la cible secrète.";
-                showScreen('screen-wait-other');
+                if (state.currentScreen !== 'screen-wait-other') {
+                    updateThemePoles('wo');
+                    document.getElementById('wo-waiting-text').textContent = 'Le Répondant réfléchit...';
+                    document.getElementById('wo-waiting-subtext').textContent = "Il doit trouver un indice pour te faire deviner la cible secrète.";
+                    showScreen('screen-wait-other');
+                }
             }
             break;
 
         case 'guessing':
             if (!isRespondent) {
-                updateThemePoles('guess');
-                document.getElementById('guess-hint-word').textContent = room.hintWord;
-                
-                state.selectedValue = null;
-                resetMarker('guess');
-                showScreen('screen-guess');
-                setupSemicircleInteraction('guess'); // Interaction activée pour le Devin
+                if (state.currentScreen !== 'screen-guess') {
+                    updateThemePoles('guess');
+                    document.getElementById('guess-hint-word').textContent = room.hintWord;
+                    
+                    state.selectedValue = null;
+                    resetMarker('guess');
+                    showScreen('screen-guess');
+                    setupSemicircleInteraction('guess'); // Interaction activée pour le Devin
+                }
             } else {
-                updateThemePoles('wo');
-                document.getElementById('wo-waiting-text').textContent = 'Le Devin réfléchit...';
-                document.getElementById('wo-waiting-subtext').textContent = "Il essaie de placer son curseur grâce à ton indice !";
-                showScreen('screen-wait-other');
+                if (state.currentScreen !== 'screen-wait-other') {
+                    updateThemePoles('wo');
+                    document.getElementById('wo-waiting-text').textContent = 'Le Devin réfléchit...';
+                    document.getElementById('wo-waiting-subtext').textContent = "Il essaie de placer son curseur grâce à ton indice !";
+                    showScreen('screen-wait-other');
+                }
             }
             break;
 
@@ -552,13 +563,14 @@ function updateValueDisplay(mode, value) {
 async function confirmPlacement() {
     const hintInput = document.getElementById('place-hint-input').value.trim();
     
-    // Validation: 1 seul mot
+    // Validation: 1 à 4 mots
     if (!hintInput) {
         showToast('Entre un indice !', 'warning');
         return;
     }
-    if (hintInput.includes(' ')) {
-        showToast('Ton indice doit comporter UN SEUL MOT sans espace !', 'error');
+    const wordsCount = hintInput.split(/\s+/).length;
+    if (wordsCount > 4) {
+        showToast('Ton indice doit comporter 4 mots maximum !', 'error');
         return;
     }
 
@@ -1044,14 +1056,15 @@ function setupInputListeners() {
     document.getElementById('custom-theme-left')?.addEventListener('input', checkCustomThemeInputs);
     document.getElementById('custom-theme-right')?.addEventListener('input', checkCustomThemeInputs);
 
-    // Empêcher les espaces dans le champ "indice"
+    // Limiter à 4 mots dans le champ "indice"
     document.getElementById('place-hint-input')?.addEventListener('input', (e) => {
-        const val = e.target.value.replace(/\s+/g, '');
-        if (e.target.value !== val) {
-            e.target.value = val;
-            showToast('Un seul mot, sans espace !', 'warning');
+        const val = e.target.value;
+        const words = val.trim().split(/\s+/);
+        if (words.length > 4 && val.trim().length > 0) {
+            e.target.value = words.slice(0, 4).join(' ') + ' ';
+            showToast('Maximum 4 mots !', 'warning');
         }
-        document.getElementById('btn-confirm-place').disabled = val.length === 0;
+        document.getElementById('btn-confirm-place').disabled = e.target.value.trim().length === 0;
     });
 
     document.getElementById('create-name')?.addEventListener('keydown', (e) => {
